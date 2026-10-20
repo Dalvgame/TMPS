@@ -20,17 +20,21 @@ public class Main {
         Product mouse = new Product(
                 "P-200", "Wireless Mouse", new BigDecimal("129.50")
         );
+        Product fan = new Product(
+                "P-300", "Fan", new BigDecimal("50.75")
+        );
 
         Cart cart = new Cart();
         cart.addProduct(keyboard, 1);
         cart.addProduct(mouse, 2);
+        cart.addProduct(fan, 1);
         printCart(cart);
 
         DiscountPolicy discount = new PercentageDiscount(new BigDecimal("10"));
         OrderRepository orderRepository = new InMemoryOrderRepository();
         CheckoutService checkoutService = new CheckoutService(orderRepository);
 
-        Order order = checkoutService.checkout("Ana Popescu", cart, discount);
+        Order order = checkoutService.checkout("VLADUT", cart, discount);
         printOrder(order);
         System.out.println("Saved orders: " + orderRepository.findAll().size());
     }
