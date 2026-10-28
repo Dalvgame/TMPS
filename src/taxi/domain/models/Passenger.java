@@ -1,4 +1,4 @@
-package taxi.model;
+package taxi.domain.models;
 
 public class Passenger {
     private final int id;

@@ -1,6 +1,6 @@
 package taxi.pricing;
 
-import taxi.model.Location;
+import taxi.domain.models.Location;
 
 public class NightFareCalculator implements FareCalculator {
     private static final double BASE_FARE = 30.0;

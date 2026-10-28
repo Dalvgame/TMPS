@@ -1,7 +1,7 @@
 package taxi.service;
 
+import taxi.domain.models.*;
 import taxi.matching.DriverMatcher;
-import taxi.model.*;
 import taxi.notification.NotificationService;
 import taxi.pricing.FareCalculator;
 import taxi.repository.DriverRepository;
@@ -15,7 +15,6 @@ public class RideService {
     private final NotificationService notificationService;
     private int nextRideId = 1;
 
-    // Dependencies are injected as abstractions (DIP)
     public RideService(DriverRepository driverRepository,
                        DriverMatcher driverMatcher,
                        FareCalculator fareCalculator,
@@ -27,6 +26,11 @@ public class RideService {
     }
 
     public Optional<Ride> requestRide(Passenger passenger, Location pickup, Location destination) {
+        return requestRide(passenger, pickup, destination, PaymentMethod.CASH, false);
+    }
+
+    public Optional<Ride> requestRide(Passenger passenger, Location pickup, Location destination,
+                                      PaymentMethod paymentMethod, boolean childSeat) {
         Optional<Driver> match = driverMatcher.findDriver(pickup, driverRepository.findAvailable());
 
         if (match.isEmpty()) {
@@ -38,10 +42,21 @@ public class RideService {
         driver.setAvailable(false);
 
         double fare = fareCalculator.calculate(pickup, destination);
-        Ride ride = new Ride(nextRideId++, passenger, driver, pickup, destination, fare);
+
+        // Builder pattern
+        Ride ride = Ride.builder()
+                .id(nextRideId++)
+                .passenger(passenger)
+                .driver(driver)
+                .pickup(pickup)
+                .destination(destination)
+                .fare(fare)
+                .paymentMethod(paymentMethod)
+                .childSeat(childSeat)
+                .build();
 
         notificationService.notify(passenger.getName(),
-                "Driver " + driver.getName() + " (" + driver.getCarModel() + ") is on the way. Fare: "
+                "Driver " + driver.getName() + " (" + driver.getVehicle() + ") is on the way. Fare: "
                         + String.format("%.2f", fare) + " MDL");
         notificationService.notify(driver.getName(), "New ride from " + pickup + " to " + destination);
         return Optional.of(ride);

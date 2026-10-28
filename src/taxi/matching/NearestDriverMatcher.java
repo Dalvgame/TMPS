@@ -1,7 +1,7 @@
 package taxi.matching;
 
-import taxi.model.Driver;
-import taxi.model.Location;
+import taxi.domain.models.Driver;
+import taxi.domain.models.Location;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;

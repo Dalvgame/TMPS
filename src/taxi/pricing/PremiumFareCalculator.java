@@ -1,6 +1,6 @@
 package taxi.pricing;
 
-import taxi.model.Location;
+import taxi.domain.models.Location;
 
 public class PremiumFareCalculator implements FareCalculator {
     private static final double BASE_FARE = 50.0;

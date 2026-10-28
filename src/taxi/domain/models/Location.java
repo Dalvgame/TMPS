@@ -1,4 +1,4 @@
-package taxi.model;
+package taxi.domain.models;
 
 public class Location {
     private final String name;

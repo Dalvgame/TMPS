@@ -1,6 +1,6 @@
 package taxi.repository;
 
-import taxi.model.Driver;
+import taxi.domain.models.Driver;
 import java.util.List;
 
 public interface DriverRepository {

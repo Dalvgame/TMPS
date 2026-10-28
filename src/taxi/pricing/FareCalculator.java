@@ -1,6 +1,6 @@
 package taxi.pricing;
 
-import taxi.model.Location;
+import taxi.domain.models.Location;
 
 public interface FareCalculator {
     double calculate(Location from, Location to);
