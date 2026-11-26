@@ -2,58 +2,72 @@ package taxi.client;
 
 import taxi.domain.factory.DriverFactory;
 import taxi.domain.factory.EconomyDriverFactory;
-import taxi.domain.factory.MinivanDriverFactory;
 import taxi.domain.factory.PremiumDriverFactory;
 import taxi.domain.models.*;
+import taxi.legacy.LegacySmsGateway;
 import taxi.matching.NearestDriverMatcher;
-import taxi.notification.ConsoleNotificationService;
-import taxi.pricing.NightFareCalculator;
+import taxi.notification.NotificationService;
+import taxi.patterns.adapter.SmsNotificationAdapter;
+import taxi.patterns.decorator.BookingFeeDecorator;
+import taxi.patterns.decorator.DiscountDecorator;
+import taxi.patterns.decorator.SurgePricingDecorator;
+import taxi.patterns.proxy.AuthorizedRideBookingProxy;
+import taxi.pricing.FareCalculator;
 import taxi.pricing.StandardFareCalculator;
 import taxi.repository.DriverRepository;
 import taxi.repository.InMemoryDriverRepository;
+import taxi.service.RideBooking;
 import taxi.service.RideService;
 
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class Main {
     public static void main(String[] args) {
         Location center = new Location("Centru", 0, 0);
         Location airport = new Location("Aeroport", 10, 4);
-        Location botanica = new Location("Botanica", 3, -2);
 
-        // --- Singleton ---
-        DriverRepository repo = InMemoryDriverRepository.getInstance();
-        System.out.println("Same repository instance? "
-                + (repo == InMemoryDriverRepository.getInstance()));
-
-        // --- Factory Method ---
-        DriverFactory economy = new EconomyDriverFactory();
+        // --- Lab 2 creational patterns still in use ---
+        DriverRepository repo = InMemoryDriverRepository.getInstance();      // Singleton
+        DriverFactory economy = new EconomyDriverFactory();                  // Factory Method
         DriverFactory premium = new PremiumDriverFactory();
-        DriverFactory minivan = new MinivanDriverFactory();
-
         repo.save(economy.createDriver(1, "Ion", "Dacia Logan", new Location("Ciocana", 2, 3)));
         repo.save(premium.createDriver(2, "Maria", "Mercedes E-Class", new Location("Rascani", -1, 1)));
-        repo.save(minivan.createDriver(3, "Petru", "Dacia Lodgy", new Location("Buiucani", 5, 5)));
+
+        // --- Decorator: stack pricing rules at runtime ---
+        FareCalculator fare = new BookingFeeDecorator(
+                new SurgePricingDecorator(new StandardFareCalculator(), 1.5), 10.0);
+
+        // --- Adapter: legacy SMS gateway behind our NotificationService interface ---
+        Map<String, String> phoneBook = new HashMap<>();
+        phoneBook.put("Alex", "+37360000001");
+        phoneBook.put("Ion", "+37360000002");
+        phoneBook.put("Maria", "+37360000003");
+        NotificationService sms = new SmsNotificationAdapter(new LegacySmsGateway(), phoneBook);
+
+        // --- Proxy: access control in front of the real service ---
+        RideBooking booking = new AuthorizedRideBookingProxy(
+                new RideService(repo, new NearestDriverMatcher(), fare, sms),
+                Set.of(99));                                                 // passenger 99 is blocked
 
         Passenger alex = new Passenger(1, "Alex");
+        Passenger mallory = new Passenger(99, "Mallory");
 
-        // Standard tariff, default options (cash, no child seat)
-        RideService standardService = new RideService(
-                repo, new NearestDriverMatcher(),
-                new StandardFareCalculator(), new ConsoleNotificationService());
-
-        Optional<Ride> ride = standardService.requestRide(alex, center, airport);
-        ride.ifPresent(r -> {
+        System.out.println("=== 1. Authorized passenger: Proxy -> RideService -> Decorators + Adapter ===");
+        booking.requestRide(alex, center, airport).ifPresent(r -> {
             System.out.println(r);
-            standardService.completeRide(r);
+            booking.completeRide(r);
         });
 
-        System.out.println("---- night tariff, card payment, child seat (Builder options) ----");
-        RideService nightService = new RideService(
-                repo, new NearestDriverMatcher(),
-                new NightFareCalculator(), new ConsoleNotificationService());
+        System.out.println("\n=== 2. Blocked passenger: stopped by the Proxy ===");
+        booking.requestRide(mallory, center, airport);
 
-        nightService.requestRide(alex, center, botanica, PaymentMethod.CARD, true)
-                .ifPresent(System.out::println);
+        System.out.println("\n=== 3. New decorator added at runtime, no existing class edited ===");
+        FareCalculator promoFare = new DiscountDecorator(fare, 20);
+        RideBooking promoBooking = new AuthorizedRideBookingProxy(
+                new RideService(repo, new NearestDriverMatcher(), promoFare, sms),
+                Set.of(99));
+        promoBooking.requestRide(alex, center, airport).ifPresent(System.out::println);
     }
 }

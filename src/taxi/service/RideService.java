@@ -8,7 +8,7 @@ import taxi.repository.DriverRepository;
 
 import java.util.Optional;
 
-public class RideService {
+public class RideService implements RideBooking {
     private final DriverRepository driverRepository;
     private final DriverMatcher driverMatcher;
     private final FareCalculator fareCalculator;
@@ -25,10 +25,12 @@ public class RideService {
         this.notificationService = notificationService;
     }
 
+    @Override
     public Optional<Ride> requestRide(Passenger passenger, Location pickup, Location destination) {
         return requestRide(passenger, pickup, destination, PaymentMethod.CASH, false);
     }
 
+    @Override
     public Optional<Ride> requestRide(Passenger passenger, Location pickup, Location destination,
                                       PaymentMethod paymentMethod, boolean childSeat) {
         Optional<Driver> match = driverMatcher.findDriver(pickup, driverRepository.findAvailable());
@@ -62,6 +64,7 @@ public class RideService {
         return Optional.of(ride);
     }
 
+    @Override
     public void completeRide(Ride ride) {
         ride.setStatus(RideStatus.COMPLETED);
         ride.getDriver().setAvailable(true);
